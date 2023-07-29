@@ -76,6 +76,86 @@ Defaults to enabled.
 
 ---
 
+### credential.trace
+
+Enables trace logging of all activities.
+Configuring Git and GCM to trace to the same location is often desirable, and
+GCM is compatible and cooperative with `GIT_TRACE`.
+
+#### Example
+
+```shell
+git config --global credential.trace /tmp/git.log
+```
+
+If the value of `credential.trace` is a full path to a file in an existing
+directory, logs are appended to the file.
+
+If the value of `credential.trace` is `true` or `1`, logs are written to
+standard error.
+
+Defaults to disabled.
+
+**Also see: [GCM_TRACE][gcm-trace]**
+
+---
+
+### credential.traceSecrets
+
+Enables tracing of secret and sensitive information, which is by default masked
+in trace output. Requires that `credential.trace` is also enabled.
+
+#### Example
+
+```shell
+git config --global credential.traceSecrets true
+```
+
+If the value of `credential.traceSecrets` is `true` or `1`, trace logs will include
+secret information.
+
+Defaults to disabled.
+
+**Also see: [GCM_TRACE_SECRETS][gcm-trace-secrets]**
+
+---
+
+### credential.traceMsAuth
+
+Enables inclusion of Microsoft Authentication library (MSAL) logs in GCM trace
+output. Requires that `credential.trace` is also enabled.
+
+#### Example
+
+```shell
+git config --global credential.traceMsAuth true
+```
+
+If the value of `credential.traceMsAuth` is `true` or `1`, trace logs will
+include verbose MSAL logs.
+
+Defaults to disabled.
+
+**Also see: [GCM_TRACE_MSAUTH][gcm-trace-msauth]**
+
+---
+
+### credential.debug
+
+Pauses execution of GCM at launch to wait for a debugger to be attached.
+
+#### Example
+
+```shell
+git config --global credential.debug true
+```
+
+Defaults to disabled.
+
+**Also see: [GCM_DEBUG][gcm-debug]**
+
+---
+
 ### credential.provider
 
 Define the host provider to use when authenticating.
@@ -354,6 +434,27 @@ Defaults to undefined.
 
 ---
 
+### credential.gitHubAccountFiltering
+
+Enable or disable automatic account filtering for GitHub based on server hints
+when there are multiple available accounts. This setting is only applicable to
+GitHub.com with [Enterprise Managed Users][github-emu].
+
+Value|Description
+-|-
+`true` _(default)_|Filter available accounts based on server hints.
+`false`|Show all available accounts.
+
+#### Example
+
+```shell
+git config --global credential.gitHubAccountFiltering "false"
+```
+
+**Also see: [GCM_GITHUB_ACCOUNTFILTERING][gcm-github-accountfiltering]**
+
+---
+
 ### credential.gitHubAuthModes
 
 Override the available authentication modes presented during GitHub
@@ -543,7 +644,10 @@ git config --global credential.msauthFlow devicecode
 
 Use the operating system account manager where available.
 
-Defaults to `false`. This default is subject to change in the future.
+Defaults to `false`. In certain cloud hosted environments when using a work or
+school account, such as [Microsoft DevBox][devbox], the default is `true`.
+
+These defaults are subject to change in the future.
 
 _**Note:** before you enable this option on Windows, please review the
 [Windows Broker][wam] details for what this means to your local Windows user
@@ -561,6 +665,30 @@ git config --global credential.msauthUseBroker true
 ```
 
 **Also see: [GCM_MSAUTH_USEBROKER][gcm-msauth-usebroker]**
+
+---
+
+### credential.msauthUseDefaultAccount _(experimental)_
+
+Use the current operating system account by default when the broker is enabled.
+
+Defaults to `false`. In certain cloud hosted environments when using a work or
+school account, such as [Microsoft DevBox][devbox], the default is `true`.
+
+These defaults are subject to change in the future.
+
+Value|Description
+-|-
+`true`|Use the current operating system account by default.
+`false` _(default)_|Do not assume any account to use by default.
+
+#### Example
+
+```shell
+git config --global credential.msauthUseDefaultAccount true
+```
+
+**Also see: [GCM_MSAUTH_USEDEFAULTACCOUNT][gcm-msauth-usedefaultaccount]**
 
 ---
 
@@ -644,11 +772,13 @@ Credential: "git:https://bob@github.com/example/myrepo" (user = bob)
 
 Specify the type of credential the Azure Repos host provider should return.
 
-Defaults to the value `pat`.
+Defaults to the value `pat`. In certain cloud hosted environments when using a
+work or school account, such as [Microsoft DevBox][devbox], the default value is
+`oauth`.
 
 Value|Description
 -|-
-`pat` _(default)_|Azure DevOps personal access tokens
+`pat`|Azure DevOps personal access tokens
 `oauth`|Microsoft identity OAuth tokens (AAD or MSA tokens)
 
 Here is more information about [Azure Access tokens][azure-tokens].
@@ -661,6 +791,75 @@ git config --global credential.azreposCredentialType oauth
 
 **Also see: [GCM_AZREPOS_CREDENTIALTYPE][gcm-azrepos-credentialtype]**
 
+---
+
+### trace2.normalTarget
+
+Turns on Trace2 Normal Format tracing - see [Git's Trace2 Normal Format
+documentation][trace2-normal-docs] for more details.
+
+#### Example
+
+```shell
+git config --global trace2.normalTarget true
+```
+
+If the value of `trace2.normalTarget` is a full path to a file in an existing
+directory, logs are appended to the file.
+
+If the value of `trace2.normalTarget` is `true` or `1`, logs are written to
+standard error.
+
+Defaults to disabled.
+
+**Also see: [GIT_TRACE2][trace2-normal-env]**
+
+---
+
+### trace2.eventTarget
+
+Turns on Trace2 Event Format tracing - see [Git's Trace2 Event Format
+documentation][trace2-event-docs] for more details.
+
+#### Example
+
+```shell
+git config --global trace2.eventTarget true
+```
+
+If the value of `trace2.eventTarget` is a full path to a file in an existing
+directory, logs are appended to the file.
+
+If the value of `trace2.eventTarget` is `true` or `1`, logs are written to
+standard error.
+
+Defaults to disabled.
+
+**Also see: [GIT_TRACE2_EVENT][trace2-event-env]**
+
+---
+
+### trace2.perfTarget
+
+Turns on Trace2 Performance Format tracing - see [Git's Trace2 Performance
+Format documentation][trace2-performance-docs] for more details.
+
+#### Example
+
+```shell
+git config --global trace2.perfTarget true
+```
+
+If the value of `trace2.perfTarget` is a full path to a file in an existing
+directory, logs are appended to the file.
+
+If the value of `trace2.perfTarget` is `true` or `1`, logs are written to
+standard error.
+
+Defaults to disabled.
+
+**Also see: [GIT_TRACE2_PERF][trace2-performance-env]**
+
 [auto-detection]: autodetect.md
 [azure-tokens]: azrepos-users-and-tokens.md
 [use-http-path]: https://git-scm.com/docs/gitcredentials/#Documentation/gitcredentials.txt-useHttpPath
@@ -671,6 +870,7 @@ git config --global credential.azreposCredentialType oauth
 [credential-plaintextstorepath]: #credentialplaintextstorepath
 [credential-cache]: https://git-scm.com/docs/git-credential-cache
 [cred-stores]: credstores.md
+[devbox]: https://azure.microsoft.com/en-us/products/dev-box
 [enterprise-config]: enterprise-config.md
 [envars]: environment.md
 [freedesktop-ss]: https://specifications.freedesktop.org/secret-service/
@@ -682,7 +882,9 @@ git config --global credential.azreposCredentialType oauth
 [gcm-bitbucket-authmodes]: environment.md#GCM_BITBUCKET_AUTHMODES
 [gcm-credential-cache-options]: environment.md#GCM_CREDENTIAL_CACHE_OPTIONS
 [gcm-credential-store]: environment.md#GCM_CREDENTIAL_STORE
+[gcm-debug]: environment.md#GCM_DEBUG
 [gcm-dpapi-store-path]: environment.md#GCM_DPAPI_STORE_PATH
+[gcm-github-accountfiltering]: environment.md#GCM_GITHUB_ACCOUNTFILTERING
 [gcm-github-authmodes]: environment.md#GCM_GITHUB_AUTHMODES
 [gcm-gitlab-authmodes]:environment.md#GCM_GITLAB_AUTHMODES
 [gcm-gui-prompt]: environment.md#GCM_GUI_PROMPT
@@ -690,9 +892,14 @@ git config --global credential.azreposCredentialType oauth
 [gcm-interactive]: environment.md#GCM_INTERACTIVE
 [gcm-msauth-flow]: environment.md#GCM_MSAUTH_FLOW
 [gcm-msauth-usebroker]: environment.md#GCM_MSAUTH_USEBROKER-experimental
+[gcm-msauth-usedefaultaccount]: environment.md#GCM_MSAUTH_USEDEFAULTACCOUNT-experimental
 [gcm-namespace]: environment.md#GCM_NAMESPACE
 [gcm-plaintext-store-path]: environment.md#GCM_PLAINTEXT_STORE_PATH
 [gcm-provider]: environment.md#GCM_PROVIDER
+[gcm-trace]: environment.md#GCM_TRACE
+[gcm-trace-secrets]: environment.md#GCM_TRACE_SECRETS
+[gcm-trace-msauth]: environment.md#GCM_TRACE_MSAUTH
+[github-emu]: https://docs.github.com/en/enterprise-cloud@latest/admin/identity-and-access-management/using-enterprise-managed-users-for-iam/about-enterprise-managed-users
 [usage]: usage.md
 [git-config-http-proxy]: https://git-scm.com/docs/git-config#Documentation/git-config.txt-httpproxy
 [http-proxy]: netconfig.md#http-proxy
@@ -701,4 +908,10 @@ git config --global credential.azreposCredentialType oauth
 [provider-migrate]: migration.md#gcm_authority
 [cache-options]: https://git-scm.com/docs/git-credential-cache#_options
 [pass]: https://www.passwordstore.org/
+[trace2-normal-docs]: https://git-scm.com/docs/api-trace2#_the_normal_format_target
+[trace2-normal-env]: environment.md#GIT_TRACE2
+[trace2-event-docs]: https://git-scm.com/docs/api-trace2#_the_event_format_target
+[trace2-event-env]: environment.md#GIT_TRACE2_EVENT
+[trace2-performance-docs]: https://git-scm.com/docs/api-trace2#_the_performance_format_target
+[trace2-performance-env]: environment.md#GIT_TRACE2_PERF
 [wam]: windows-broker.md

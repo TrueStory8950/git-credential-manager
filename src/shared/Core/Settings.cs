@@ -71,7 +71,7 @@ namespace GitCredentialManager
         /// <remarks>
         /// If GUI prompts are disabled but an equivalent terminal prompt is available, the latter will be used instead.
         /// </remarks>
-        bool IsGuiPromptsEnabled { get; }
+        bool IsGuiPromptsEnabled { get; set; }
 
         /// <summary>
         /// True if it is permitted to interact with the user, false otherwise.
@@ -155,6 +155,12 @@ namespace GitCredentialManager
         string CustomCertificateBundlePath { get; }
 
         /// <summary>
+        // Optional path to a file containing one or more cookies.
+        /// </summary>
+        /// <remarks>The default value is null if unset.</remarks>
+        string CustomCookieFilePath { get; }
+
+        /// <summary>
         /// The SSL/TLS backend.
         /// </summary>
         TlsBackend TlsBackend { get; }
@@ -171,6 +177,12 @@ namespace GitCredentialManager
         /// of host provider auto-detection. Use a zero or negative value to disable probing.
         /// </summary>
         int AutoDetectProviderTimeout { get; }
+
+        /// <summary>
+        /// Automatically use the default/current operating system account if no other account information is given
+        /// for Microsoft Authentication.
+        /// </summary>
+        bool UseMsAuthDefaultAccount { get; }
 
         /// <summary>
         /// Get TRACE2 settings.
@@ -475,7 +487,11 @@ namespace GitCredentialManager
 
         public Uri RemoteUri { get; set; }
 
-        public bool IsDebuggingEnabled => _environment.Variables.GetBooleanyOrDefault(KnownEnvars.GcmDebug, false);
+        public bool IsDebuggingEnabled =>
+            TryGetSetting(KnownEnvars.GcmDebug,
+                KnownGitCfg.Credential.SectionName,
+                KnownGitCfg.Credential.Debug,
+                out string str) && str.IsTruthy();
 
         public bool IsTerminalPromptsEnabled => _environment.Variables.GetBooleanyOrDefault(KnownEnvars.GitTerminalPrompts, true);
 
@@ -496,6 +512,7 @@ namespace GitCredentialManager
 
                 return defaultValue;
             }
+            set => _environment.SetEnvironmentVariable(KnownEnvars.GcmGuiPromptsEnabled, value ? bool.TrueString : bool.FalseString);
         }
 
         public bool IsInteractionAllowed
@@ -536,7 +553,11 @@ namespace GitCredentialManager
             }
         }
 
-        public bool GetTracingEnabled(out string value) => _environment.Variables.TryGetValue(KnownEnvars.GcmTrace, out value) && !value.IsFalsey();
+        public bool GetTracingEnabled(out string value) =>
+            TryGetSetting(KnownEnvars.GcmTrace,
+                KnownGitCfg.Credential.SectionName,
+                KnownGitCfg.Credential.Trace,
+                out value) && !value.IsFalsey();
 
         public Trace2Settings GetTrace2Settings()
         {
@@ -563,9 +584,17 @@ namespace GitCredentialManager
             return settings;
         }
 
-        public bool IsSecretTracingEnabled => _environment.Variables.GetBooleanyOrDefault(KnownEnvars.GcmTraceSecrets, false);
+        public bool IsSecretTracingEnabled =>
+            TryGetSetting(KnownEnvars.GcmTraceSecrets,
+                KnownGitCfg.Credential.SectionName,
+                KnownGitCfg.Credential.TraceSecrets,
+                out string str) && str.IsTruthy();
 
-        public bool IsMsalTracingEnabled => _environment.Variables.GetBooleanyOrDefault(Constants.EnvironmentVariables.GcmTraceMsAuth, false);
+        public bool IsMsalTracingEnabled =>
+            TryGetSetting(KnownEnvars.GcmTraceMsAuth,
+                KnownGitCfg.Credential.SectionName,
+                KnownGitCfg.Credential.TraceMsAuth,
+                out string str) && str.IsTruthy();
 
         public string ProviderOverride =>
             TryGetSetting(KnownEnvars.GcmProvider, GitCredCfg.SectionName, GitCredCfg.Provider, out string providerId) ? providerId : null;
@@ -602,6 +631,9 @@ namespace GitCredentialManager
 
         public string CustomCertificateBundlePath =>
             TryGetPathSetting(KnownEnvars.GitSslCaInfo, KnownGitCfg.Http.SectionName, KnownGitCfg.Http.SslCaInfo, out string value) ? value : null;
+
+        public string CustomCookieFilePath =>
+            TryGetPathSetting(null, KnownGitCfg.Http.SectionName, KnownGitCfg.Http.CookieFile, out string value) ? value : null;
 
         public TlsBackend TlsBackend =>
             TryGetSetting(null, KnownGitCfg.Http.SectionName, KnownGitCfg.Http.SslBackend, out string config)
@@ -767,6 +799,15 @@ namespace GitCredentialManager
                 out string credStore)
                 ? credStore
                 : null;
+
+        public bool UseMsAuthDefaultAccount =>
+            TryGetSetting(
+                KnownEnvars.MsAuthUseDefaultAccount,
+                KnownGitCfg.Credential.SectionName,
+                KnownGitCfg.Credential.MsAuthUseDefaultAccount,
+                out string str)
+            ? str.IsTruthy()
+            : PlatformUtils.IsDevBox(); // default to true in DevBox environment
 
         #region IDisposable
 

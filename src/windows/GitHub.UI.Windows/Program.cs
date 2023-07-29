@@ -1,12 +1,12 @@
 ﻿using System;
-using System.Diagnostics;
 using System.Threading.Tasks;
-using GitHub.UI.Commands;
-using GitHub.UI.Controls;
 using GitCredentialManager;
 using GitCredentialManager.UI;
+using GitCredentialManager.UI.Windows;
+using GitHub.UI.Windows.Commands;
+using GitHub.UI.Windows.Controls;
 
-namespace GitHub.UI
+namespace GitHub.UI.Windows
 {
     public static class Program
     {
@@ -33,6 +33,7 @@ namespace GitHub.UI
                 app.RegisterCommand(new CredentialsCommandImpl(context));
                 app.RegisterCommand(new TwoFactorCommandImpl(context));
                 app.RegisterCommand(new DeviceCodeCommandImpl(context));
+                app.RegisterCommand(new SelectAccountCommandImpl(context));
 
                 int exitCode = app.RunAsync(args)
                     .ConfigureAwait(false)

@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using GitCredentialManager.UI.ViewModels;
 
 namespace GitCredentialManager.Authentication
 {
@@ -20,13 +21,13 @@ namespace GitCredentialManager.Authentication
         }
 
         protected Task<IDictionary<string, string>> InvokeHelperAsync(string path, string args,
-            IDictionary<string, string> standardInput = null)
+            StreamReader standardInput = null)
         {
-            return InvokeHelperAsync(path, args, null, CancellationToken.None);
+            return InvokeHelperAsync(path, args, standardInput, CancellationToken.None);
         }
 
         protected internal virtual async Task<IDictionary<string, string>> InvokeHelperAsync(string path, string args,
-            IDictionary<string, string> standardInput, CancellationToken ct)
+            StreamReader standardInput, CancellationToken ct)
         {
             var procStartInfo = new ProcessStartInfo(path)
             {
@@ -34,7 +35,8 @@ namespace GitCredentialManager.Authentication
                 RedirectStandardInput = true,
                 RedirectStandardOutput = true,
                 RedirectStandardError = false, // Do not redirect stderr as tracing might be enabled
-                UseShellExecute = false
+                UseShellExecute = false,
+                StandardOutputEncoding = EncodingEx.UTF8NoBom,
             };
 
             Context.Trace.WriteLine($"Starting helper process: {path} {args}");
@@ -55,9 +57,15 @@ namespace GitCredentialManager.Authentication
             // Kill the process upon a cancellation request
             ct.Register(() => process.Kill());
 
-            if (!(standardInput is null))
+            // Write the standard input to the process if we have any to write
+            if (standardInput is not null)
             {
-                await process.StandardInput.WriteDictionaryAsync(standardInput);
+#if NETFRAMEWORK
+                await standardInput.BaseStream.CopyToAsync(process.StandardInput.BaseStream);
+#else
+                await standardInput.BaseStream.CopyToAsync(process.StandardInput.BaseStream, ct);
+#endif
+                process.StandardInput.Close();
             }
 
             IDictionary<string, string> resultDict = await process.StandardOutput.ReadDictionaryAsync(StringComparer.OrdinalIgnoreCase);
@@ -109,6 +117,24 @@ namespace GitCredentialManager.Authentication
                 throw new Trace2InvalidOperationException(Context.Trace2, "Cannot prompt because terminal prompts have been disabled.");
             }
         }
+        
+        protected void ThrowIfWindowCancelled(WindowViewModel viewModel)
+        {
+            if (!viewModel.WindowResult)
+            {
+                throw new Exception("User cancelled dialog.");
+            }
+        }
+        
+        protected IntPtr GetParentWindowHandle()
+        {
+            if (int.TryParse(Context.Settings.ParentWindowId, out int id))
+            {
+                return new IntPtr(id);
+            }
+
+            return IntPtr.Zero;
+        }
 
         protected bool TryFindHelperCommand(string envar, string configName, string defaultValue, out string command, out string args)
         {
@@ -147,8 +173,22 @@ namespace GitCredentialManager.Authentication
             }
             else
             {
-                Context.Trace.WriteLine($"Using default UI helper: '{defaultValue}'.");
-                helperName = defaultValue;
+                // Whilst we evaluate using the Avalonia/in-proc GUIs on Windows we include
+                // a 'fallback' flag that lets us continue to use the WPF out-of-proc helpers.
+                if (PlatformUtils.IsWindows() &&
+                    Context.Settings.TryGetSetting(
+                        Constants.EnvironmentVariables.GcmDevUseLegacyUiHelpers,
+                        Constants.GitConfiguration.Credential.SectionName,
+                        Constants.GitConfiguration.Credential.DevUseLegacyUiHelpers,
+                        out string str) && str.IsTruthy())
+                {
+                    Context.Trace.WriteLine($"Using default legacy UI helper: '{defaultValue}'.");
+                    helperName = defaultValue;
+                }
+                else
+                {
+                    return false;
+                }
             }
 
             //
